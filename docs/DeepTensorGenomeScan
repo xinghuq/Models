@@ -31,7 +31,41 @@ def evaluate_performance_regression(y, p):
 
     fig = sns.jointplot(x="truth", y="predicted", data=df, alpha=0.5)
     return fig, mse, explained_variance, r2
-    
+ def create_importance_csv(datapath, model, masks):
+    network_csv = pd.read_csv(datapath + "/topology.csv")
+
+    coordinate_list = []
+    for i, mask in zip(np.arange(len(masks)), masks):
+        coordinates = pd.DataFrame([])
+
+        if (i == 0):
+            if 'chr' in network_csv.columns:
+                coordinates["chr"] = network_csv["chr"]
+        coordinates["node_layer_" + str(i)] = mask.row
+        coordinates["node_layer_" + str(i + 1)] = mask.col
+        coordinates = coordinates.sort_values("node_layer_" + str(i), ascending=True)
+        coordinates["weights_" + str(i)] = model.get_layer(name="LocallyDirected_" + str(i)).get_weights()[0]
+
+        coordinate_names = network_csv[["layer" + str(i) + "_node", "layer" + str(i) + "_name"]].drop_duplicates()
+        coordinate_names = coordinate_names.rename({"layer" + str(i) + "_node": "node_layer_" + str(i)}, axis=1)
+        coordinates = coordinates.merge(coordinate_names, on="node_layer_" + str(i))
+        coordinate_list.append(coordinates)
+
+        if i == 0:
+            total_list = coordinate_list[i]
+        else:
+            total_list = total_list.merge(coordinate_list[i], on="node_layer_" + str(i))
+
+    i += 1
+    coordinates = pd.DataFrame([])
+    coordinates["weights_" + str(i)] = model.get_layer(name="output_layer").get_weights()[0].flatten()
+    coordinates["node_layer_" + str(i)] = np.arange(len(coordinates))
+    coordinate_names = network_csv[["layer" + str(i) + "_node", "layer" + str(i) + "_name"]].drop_duplicates()
+    coordinate_names = coordinate_names.rename({"layer" + str(i) + "_node": "node_layer_" + str(i)}, axis=1)
+    coordinates = coordinates.merge(coordinate_names, on="node_layer_" + str(i))
+    total_list = total_list.merge(coordinates, on="node_layer_" + str(i))
+    total_list["raw_importance"] = total_list.filter(like="weights").prod(axis=1)
+    return total_list   
     
 def train_regression(args):
     datapath = args.path
