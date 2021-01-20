@@ -12,6 +12,11 @@ R CMD INSTALL FCNN4R_0.6.2.tar.gz
 R_LIBS=/path/to/Rlibs
 
 ```
+```{r}
+
+devtools::install_github("xinghuq/Models/FCNN4R")
+
+```
 
 ### Citation
 
